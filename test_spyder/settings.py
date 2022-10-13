@@ -17,6 +17,7 @@ NEWSPIDER_MODULE = 'test_spyder.spiders'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'test_spyder (+http://www.yourdomain.com)'
+CONNECTION_STRING = "sqlite:///test.db"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True

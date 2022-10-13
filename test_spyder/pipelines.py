@@ -10,26 +10,37 @@ from itemadapter import ItemAdapter, adapter
 from sqlalchemy import create_engine, engine, select
 from sqlalchemy.orm import sessionmaker
 
+from scrapy.utils.project import get_project_settings
 
-from .models import Author, Keyword, Quote
+from .models import Base, Author, Keyword, Quote
+
+
+def init_db():
+    engine = create_engine(get_project_settings().get("CONNECTION_STRING"))
+    Base.metadata.create_all(engine)
+    return engine
+
 
 class RemoveQuotePipeline:
 
     def process_item(self, item, spider):
         adapter = ItemAdapter(item)
         if 'quote' in adapter.keys():
-            adapter['quote'] = adapter['quote'].replace('“','').replace('”','').replace('\n','').strip()
+            adapter['quote'] = adapter['quote'].replace(
+                '“', '').replace('”', '').replace('\n', '').strip()
         return item
+
 
 class AddAuthorToDB():
 
     def process_item(self, item, spider):
-        engine = create_engine('sqlite:///test.db')
+        engine = init_db()
         Session = sessionmaker(bind=engine)
         adapter = ItemAdapter(item)
         if 'name' in adapter.keys():
             session = Session()
-            a = Author(name= adapter['name'], birthday= datetime.strptime(adapter['birthdate'], '%B %d, %Y' ).date(), bio= adapter['bio'][:149])
+            a = Author(name=adapter['name'], birthday=datetime.strptime(
+                adapter['birthdate'], '%B %d, %Y').date(), bio=adapter['bio'][:149])
             try:
                 session.add(a)
                 session.commit()
@@ -42,13 +53,13 @@ class AddAuthorToDB():
 class AddKeywordToDB():
 
     def process_item(self, item, spider):
-        engine = create_engine('sqlite:///test.db')
+        engine = init_db()
         Session = sessionmaker(bind=engine)
         adapter = ItemAdapter(item)
         if 'keywords' in adapter.keys():
             session = Session()
             for word in adapter['keywords']:
-                kw = Keyword(word = word)
+                kw = Keyword(word=word)
                 try:
                     session.add(kw)
                     session.commit()
@@ -61,17 +72,19 @@ class AddKeywordToDB():
 class AddQuoteToDB():
 
     def process_item(self, item, spider):
-        engine = create_engine('sqlite:///test.db')
+        engine = init_db()
         Session = sessionmaker(bind=engine)
         adapter = ItemAdapter(item)
         if 'quote' in adapter.keys():
             session = Session()
             for author in adapter['author']:
                 try:
-                    a = session.execute(select(Author).where(Author.name == author)).scalar_one()
-                    q = Quote(quote= adapter['quote'], author_id = a.id)
+                    a = session.execute(select(Author).where(
+                        Author.name == author)).scalar_one()
+                    q = Quote(quote=adapter['quote'], author_id=a.id)
                     # for word in adapter['keywords']:
-                    kws = session.execute(select(Keyword).where(Keyword.word.in_(adapter['keywords']))).all()
+                    kws = session.execute(select(Keyword).where(
+                        Keyword.word.in_(adapter['keywords']))).all()
                     # print([kw[0] for kw in kws])
                     q.keywords = [kw[0] for kw in kws]
                     session.add(q)
